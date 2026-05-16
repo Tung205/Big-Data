@@ -1,0 +1,42 @@
+# ================================================================
+# config.yaml - Cấu hình cho Flink Job (Fraud Detection)
+# ================================================================
+# Khi chạy local: giữ nguyên các giá trị mặc định bên dưới.
+# Khi deploy lên GKE: chỉnh sửa các giá trị tương ứng.
+# ================================================================
+
+kafka:
+  bootstrap_servers: "kafka:9092"
+  topic: "transactions"
+  group_id: "flink-fraud-consumer"
+  # Bắt đầu đọc từ offset mới nhất (latest) khi khởi động job
+  # Đổi thành "earliest" nếu muốn đọc lại từ đầu topic
+  start_offset: "latest"
+
+redis:
+  host: "redis"
+  port: 6379
+  db: 0
+  # TTL mặc định Spark sẽ set khi ghi velocity features (giây)
+  # Flink không cần biết cái này, chỉ để tham khảo
+  default_ttl_sec: 86400
+  # Timeout kết nối Redis (giây)
+  socket_connect_timeout: 5
+  socket_timeout: 2
+
+model_api:
+  url: "http://model-api:8000/predict"
+  # Timeout gọi HTTP đến Model API (giây)
+  timeout_sec: 5
+  # Số lần retry khi Model API không phản hồi
+  max_retries: 3
+
+# model_api:
+#   url: "http://mock-model-api:80/anything"  # httpbin nhận mọi POST, trả 200
+#   timeout_sec: 5
+#   max_retries: 3
+
+flink:
+  parallelism: 2
+  checkpoint_interval_ms: 30000
+  checkpoint_dir: "file:///opt/flink/checkpoints"
