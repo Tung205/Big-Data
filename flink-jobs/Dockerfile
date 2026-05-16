@@ -10,7 +10,7 @@ RUN apt-get update && apt-get install -y \
         python3.10 \
         python3.10-dev \
         python3-pip \
-        curl \
+        wget \
     && ln -sf /usr/bin/python3.10 /usr/bin/python3 \
     && ln -sf /usr/bin/python3.10 /usr/bin/python \
     && rm -rf /var/lib/apt/lists/*
@@ -19,10 +19,13 @@ RUN apt-get update && apt-get install -y \
 COPY requirements.txt /tmp/requirements.txt
 RUN pip3 install --no-cache-dir -r /tmp/requirements.txt
 
-# --- Tải Kafka Connector JAR (Flink cần JAR này để đọc từ Kafka) ---
-RUN curl -fSL \
-    "https://repo1.maven.org/maven2/org/apache/flink/flink-sql-connector-kafka/1.18.0/flink-sql-connector-kafka-1.18.0.jar" \
-    -o /opt/flink/lib/flink-sql-connector-kafka-1.18.0.jar
+# --- Tải Kafka Connector JAR ---
+# Tên package đúng cho Flink 1.18.x trên Maven Central là:
+# flink-sql-connector-kafka phiên bản 3.1.0-1.18
+RUN wget -q \
+    "https://repo1.maven.org/maven2/org/apache/flink/flink-sql-connector-kafka/3.1.0-1.18/flink-sql-connector-kafka-3.1.0-1.18.jar" \
+    -O /opt/flink/lib/flink-sql-connector-kafka-3.1.0-1.18.jar \
+    && echo "✓ Kafka connector JAR downloaded"
 
 # --- Copy toàn bộ code vào image ---
 WORKDIR /opt/flink/usrlib
@@ -30,5 +33,5 @@ COPY stream_processor.py .
 COPY config.yaml         .
 COPY utils/              ./utils/
 
-# Biến môi trường mặc định (ghi đè bằng docker-compose nếu cần)
+# Biến môi trường mặc định
 ENV PYTHONUNBUFFERED=1
