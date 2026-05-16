@@ -1,0 +1,120 @@
+# ================================================================
+# docker-compose.yml — Chạy thử Flink Job (standalone)
+# Chỉ bao gồm: Kafka, Redis, Flink, Mock Model API, Mock Generator
+# ================================================================
+
+networks:
+  fraud-net:
+    driver: bridge
+
+services:
+
+  # ── Zookeeper (Kafka cần) ─────────────────────────────────────
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.5.0
+    container_name: zookeeper
+    networks: [fraud-net]
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    healthcheck:
+      test: ["CMD", "nc", "-z", "localhost", "2181"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ── Kafka ─────────────────────────────────────────────────────
+  kafka:
+    image: confluentinc/cp-kafka:7.5.0
+    container_name: kafka
+    networks: [fraud-net]
+    depends_on:
+      zookeeper:
+        condition: service_healthy
+    ports:
+      - "29092:29092"   # expose ra ngoài để debug nếu cần
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092,PLAINTEXT_HOST://localhost:29092
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+    healthcheck:
+      test: ["CMD", "kafka-broker-api-versions", "--bootstrap-server", "localhost:9092"]
+      interval: 15s
+      timeout: 10s
+      retries: 10
+
+  # ── Redis ─────────────────────────────────────────────────────
+  redis:
+    image: redis:7.2-alpine
+    container_name: redis
+    networks: [fraud-net]
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  # ── Mock Model API ────────────────────────────────────────────
+  # Server giả để Flink có chỗ gửi request, tránh lỗi Connection Refused
+  # Trả về response cố định: {"status": "received"}
+  mock-model-api:
+    image: kennethreitz/httpbin
+    container_name: mock-model-api
+    networks: [fraud-net]
+    # httpbin.org/anything nhận mọi POST và echo lại body
+    # → Flink sẽ thấy status 200, không bị lỗi
+
+  # ── Flink JobManager ──────────────────────────────────────────
+  flink-jobmanager:
+    build:
+      context: .         # build từ thư mục flink-jobs/ hiện tại
+      dockerfile: Dockerfile
+    container_name: flink-jobmanager
+    networks: [fraud-net]
+    depends_on:
+      kafka:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    ports:
+      - "8081:8081"      # Flink Web UI
+    command: jobmanager
+    environment:
+      FLINK_PROPERTIES: |
+        jobmanager.rpc.address: flink-jobmanager
+        taskmanager.numberOfTaskSlots: 4
+
+  # ── Flink TaskManager ─────────────────────────────────────────
+  flink-taskmanager:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: flink-taskmanager
+    networks: [fraud-net]
+    depends_on:
+      - flink-jobmanager
+    command: taskmanager
+    environment:
+      FLINK_PROPERTIES: |
+        jobmanager.rpc.address: flink-jobmanager
+        taskmanager.numberOfTaskSlots: 4
+
+  # ── Mock Data Generator ───────────────────────────────────────
+  # Gửi một vài transaction giả lên Kafka để test pipeline
+  mock-generator:
+    image: python:3.10-slim
+    container_name: mock-generator
+    networks: [fraud-net]
+    depends_on:
+      kafka:
+        condition: service_healthy
+    volumes:
+      - .:/app
+    working_dir: /app
+    command: >
+      bash -c "pip install kafka-python -q && python mock_generator.py"

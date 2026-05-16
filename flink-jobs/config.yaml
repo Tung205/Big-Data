@@ -24,17 +24,17 @@ redis:
   socket_connect_timeout: 5
   socket_timeout: 2
 
-model_api:
-  url: "http://model-api:8000/predict"
-  # Timeout gọi HTTP đến Model API (giây)
-  timeout_sec: 5
-  # Số lần retry khi Model API không phản hồi
-  max_retries: 3
-
 # model_api:
-#   url: "http://mock-model-api:80/anything"  # httpbin nhận mọi POST, trả 200
+#   url: "http://model-api:8000/predict"
+#   # Timeout gọi HTTP đến Model API (giây)
 #   timeout_sec: 5
+#   # Số lần retry khi Model API không phản hồi
 #   max_retries: 3
+
+model_api:
+  url: "http://mock-model-api:80/anything"  # httpbin nhận mọi POST, trả 200
+  timeout_sec: 5
+  max_retries: 3
 
 flink:
   parallelism: 2
