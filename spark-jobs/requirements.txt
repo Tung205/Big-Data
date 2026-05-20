@@ -1,0 +1,6 @@
+pandas
+redis
+google-cloud-storage
+google-cloud-bigquery
+pyarrow
+db-dtypes

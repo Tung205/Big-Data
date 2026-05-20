@@ -1,0 +1,21 @@
+{
+  "gcs": {
+    "bucket_name": "your-bucket-name",
+    "source_blob": "fraud/train.csv",
+    "local_path": "/tmp/train.csv"
+  },
+  "output": {
+    "base_path": "/app/output"
+  },
+  "redis": {
+    "enabled": false,
+    "host": "redis",
+    "port": 6379
+  },
+  "bigquery": {
+    "enabled": true,
+    "project_id": "your-project-id",
+    "dataset_id": "fraud_dataset",
+    "location": "US"
+  }
+}

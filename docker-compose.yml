@@ -1,0 +1,17 @@
+services:
+  redis:
+    image: redis:latest
+    container_name: fraud-redis
+    ports:
+      - "6379:6379"
+
+  spark-job:
+    build: ./spark-jobs
+    container_name: fraud-spark-job
+    depends_on:
+      - redis
+    volumes:
+      - ./spark-jobs/output:/app/output
+      - ./gcp-credentials.json:/app/keys/gcp-credentials.json
+    environment:
+      - GOOGLE_APPLICATION_CREDENTIALS=/app/keys/gcp-credentials.json
