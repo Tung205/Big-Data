@@ -1,15 +1,23 @@
 version: '3.8'
 
+networks:
+  fraud-network:
+    driver: bridge
+
 services:
   # 1. Khối Zookeeper (Bắt buộc phải có để quản lý Kafka)
   zookeeper:
     image: confluentinc/cp-zookeeper:7.3.0
+    networks:
+      - fraud-network
     environment:
       ZOOKEEPER_CLIENT_PORT: 2181
 
   # 2. Khối Kafka Broker (Nơi hứng dữ liệu từ Data Generator)
   kafka1:
     image: confluentinc/cp-kafka:7.3.0
+    networks:
+      - fraud-network
     depends_on:
       - zookeeper
     ports:
@@ -22,21 +30,32 @@ services:
       KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
 
-  # 3. Khối Data Generator (Trình sinh dữ liệu giả lập của em)
+  # 3. Khối Data Generator (Trình sinh dữ liệu siêu tốc độ)
   data-generator:
     build: ./data-generator
+    networks:
+      - fraud-network
     depends_on:
       - kafka1
     volumes:
-      # Map thư mục data chứa file fraudTrain.csv vào container
       - ./data:/app/data:ro  
-      # Map file khóa JSON theo đúng tên em đang để
       - ./application_default_credentials.json:/app/application_default_credentials.json:ro 
     environment:
-      # Các biến môi trường cho config.py nhận diện
       - KAFKA_BROKERS=kafka1:9092
       - TOPIC_NAME=raw_transactions
-      # Chỉ đích danh file dữ liệu theo tên chuẩn trong cây thư mục
       - DATA_FILE=/app/data/fraudTrain.csv
-      # Chỉ đích danh chìa khóa Google
+      - GOOGLE_APPLICATION_CREDENTIALS=/app/application_default_credentials.json
+      # Biến quy định tốc độ bắn. Đổi thành 'cloud' nếu đẩy lên máy ảo GCE!
+      - ENV=local 
+  
+  # 4. Khối xử lý dòng dữ liệu liên tục bằng Apache Spark
+  spark-batch:
+    build: ./spark-jobs
+    networks:
+      - fraud-network
+    depends_on:
+      - kafka1
+    volumes:
+      - ./application_default_credentials.json:/app/application_default_credentials.json:ro
+    environment:
       - GOOGLE_APPLICATION_CREDENTIALS=/app/application_default_credentials.json

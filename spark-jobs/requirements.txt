@@ -1,6 +1,7 @@
-pandas
-redis
-google-cloud-storage
-google-cloud-bigquery
-pyarrow
-db-dtypes
+pyspark==3.4.1
+google-cloud-storage==2.10.0
+google-cloud-bigquery==3.11.4
+pandas==2.1.1
+pyarrow==13.0.0
+redis==5.0.0
+numpy<2.0.0

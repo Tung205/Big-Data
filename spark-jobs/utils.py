@@ -1,136 +1,59 @@
-import json
 import os
-import redis
-from google.cloud import storage
-from google.cloud import bigquery
+import json
+from google.cloud import storage, bigquery
 
-
-def load_config(path="/app/config.json"):
-    with open(path, "r", encoding="utf-8") as f:
+def load_config(config_path="config.json"):
+    with open(config_path, "r") as f:
         return json.load(f)
 
-
 def ensure_dir(path):
-    os.makedirs(path, exist_ok=True)
-
+    if not os.path.exists(path):
+        os.makedirs(path)
 
 def download_from_gcs(bucket_name, source_blob, local_path):
-    os.makedirs(os.path.dirname(local_path), exist_ok=True)
-
-    storage_client = storage.Client()
-    bucket = storage_client.bucket(bucket_name)
+    """Tải file từ Google Cloud Storage về container"""
+    print(f"[*] Đang tải {source_blob} từ bucket {bucket_name}...")
+    client = storage.Client()
+    bucket = client.bucket(bucket_name)
     blob = bucket.blob(source_blob)
-
-    print(f"Downloading gs://{bucket_name}/{source_blob} to {local_path} ...")
-    blob.download_to_filename(local_path)
-    print("Downloaded successfully.")
-
-
-def get_redis_client(redis_config):
-    return redis.Redis(
-        host=redis_config["host"],
-        port=int(redis_config["port"]),
-        decode_responses=True
-    )
-
-
-def write_profiles_to_redis(account_features_df, recent_features_df, redis_config):
-    """
-    Redis chỉ lưu profile đã aggregate theo cc_num.
-    Không lưu raw train.csv vào Redis.
-    """
-
-    r = get_redis_client(redis_config)
-
-    account_rows = account_features_df.collect()
-    recent_rows = recent_features_df.collect()
-
-    recent_map = {
-        str(row["cc_num"]): row.asDict()
-        for row in recent_rows
-    }
-
-    count_written = 0
-
-    for row in account_rows:
-        data = row.asDict()
-        cc_num = str(data["cc_num"])
-        recent = recent_map.get(cc_num, {})
-
-        profile = {
-            "transaction_count": str(data.get("transaction_count", 0) or 0),
-            "total_amount": str(data.get("total_amount", 0) or 0),
-            "avg_amount": str(data.get("avg_amount", 0) or 0),
-            "min_amount": str(data.get("min_amount", 0) or 0),
-            "max_amount": str(data.get("max_amount", 0) or 0),
-            "fraud_count": str(data.get("fraud_count", 0) or 0),
-            "fraud_rate": str(data.get("fraud_rate", 0) or 0),
-
-            "amount_1d": str(recent.get("amount_1d", 0) or 0),
-            "amount_7d": str(recent.get("amount_7d", 0) or 0),
-            "amount_30d": str(recent.get("amount_30d", 0) or 0),
-
-            "txn_count_1d": str(recent.get("txn_count_1d", 0) or 0),
-            "txn_count_7d": str(recent.get("txn_count_7d", 0) or 0),
-            "txn_count_30d": str(recent.get("txn_count_30d", 0) or 0)
-        }
-
-        redis_key = f"profile:{cc_num}"
-        r.hset(redis_key, mapping=profile)
-        count_written += 1
-
-    print(f"Wrote {count_written} account profiles to Redis.")
-
+    
+    # Chỉ tải nếu file chưa tồn tại để tiết kiệm thời gian và băng thông
+    if not os.path.exists(local_path):
+        blob.download_to_filename(local_path)
+        print(f"[+] Đã tải xong: {local_path}")
+    else:
+        print(f"[+] File đã tồn tại ở {local_path}, bỏ qua tải lại.")
 
 def ensure_bigquery_dataset(project_id, dataset_id, location="US"):
+    """Đảm bảo Dataset đã được tạo trên BigQuery"""
     client = bigquery.Client(project=project_id)
     dataset_ref = f"{project_id}.{dataset_id}"
-
     try:
         client.get_dataset(dataset_ref)
-        print(f"BigQuery dataset already exists: {dataset_ref}")
+        print(f"[*] Dataset {dataset_ref} đã tồn tại.")
     except Exception:
+        print(f"[*] Đang tạo Dataset mới {dataset_ref}...")
         dataset = bigquery.Dataset(dataset_ref)
         dataset.location = location
-        client.create_dataset(dataset)
-        print(f"Created BigQuery dataset: {dataset_ref}")
-
+        client.create_dataset(dataset, timeout=30)
 
 def write_spark_df_to_bigquery(spark_df, project_id, dataset_id, table_name, location="US"):
-    """
-    Hàm này chỉ dùng cho bảng aggregate nhỏ:
-    - account_features
-    - category_summary
-    - geo_summary
-    - gender_summary
-    - recent_features
-
-    Không dùng để ghi raw train.csv 343MB.
-    """
-
+    """Đẩy bảng thống kê Aggregate lên BigQuery (Tối ưu cho bảng nhỏ)"""
+    print(f"[*] Đang đẩy bảng {table_name} lên BigQuery...")
     client = bigquery.Client(project=project_id)
     table_id = f"{project_id}.{dataset_id}.{table_name}"
-
-    print(f"Writing aggregate table to BigQuery: {table_id}")
-
-    pdf = spark_df.toPandas()
-
-    if pdf.empty:
-        print(f"Skip BigQuery table {table_id}: empty DataFrame")
-        return
-
+    
+    # Ép dữ liệu về Pandas DataFrame để đẩy thẳng qua API (Không cần tải .jar rắc rối)
+    pandas_df = spark_df.toPandas()
+    
     job_config = bigquery.LoadJobConfig(
-        write_disposition=bigquery.WriteDisposition.WRITE_TRUNCATE,
-        autodetect=True
+        write_disposition="WRITE_TRUNCATE", # Ghi đè bảng cũ
     )
+    
+    job = client.load_table_from_dataframe(pandas_df, table_id, job_config=job_config)
+    job.result() # Đợi cho tiến trình hoàn tất
+    print(f"[+] Thành công! Bảng {table_id} đã có {job.output_rows} dòng.")
 
-    job = client.load_table_from_dataframe(
-        pdf,
-        table_id,
-        job_config=job_config,
-        location=location
-    )
-
-    job.result()
-
-    print(f"Wrote {len(pdf)} rows to BigQuery table {table_id}")
+def write_profiles_to_redis(account_features, recent_features, redis_config):
+    # Hàm này sẽ được hoàn thiện khi ta setup xong Redis cho Flink
+    pass
