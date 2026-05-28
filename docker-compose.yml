@@ -59,3 +59,25 @@ services:
       - ./application_default_credentials.json:/app/application_default_credentials.json:ro
     environment:
       - GOOGLE_APPLICATION_CREDENTIALS=/app/application_default_credentials.json
+
+  # 5. Khối xử lý thời gian thực bằng Apache Flink + XGBoost
+  flink-stream:
+    build: ./flink-jobs
+    networks:
+      - fraud-network
+    depends_on:
+      - kafka1
+    # Flink đẩy kết quả ra lại Kafka Topic, không đẩy lên Google Cloud
+    # Nên không cần mount file Credentials JSON ở đây
+
+  # 6. Khối Hút Cảnh Báo Gian Lận lên BigQuery
+  bq-sink:
+    build: ./bq-sink
+    networks:
+      - fraud-network
+    depends_on:
+      - flink-stream
+    volumes:
+      - ./application_default_credentials.json:/app/application_default_credentials.json:ro
+    environment:
+      - GOOGLE_APPLICATION_CREDENTIALS=/app/application_default_credentials.json

@@ -1,14 +1,2 @@
-# Flink Job - Fraud Detection
-# Cài đặt: pip install -r requirements.txt
-
-# PyFlink — phải khớp với version Flink trong Dockerfile (1.18)
-apache-flink==1.18.0
-
-# Kết nối Redis (Spark cold path đã ghi sẵn velocity features vào đây)
-redis==5.0.1
-
-# Gọi HTTP đến Model API
-requests==2.31.0
-
-# Đọc config.yaml
-pyyaml==6.0.1
+apache-flink==1.17.1
+xgboost==2.0.3

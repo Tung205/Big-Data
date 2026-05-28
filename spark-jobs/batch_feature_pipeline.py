@@ -140,6 +140,7 @@ def main():
     
     query = parsed_df.writeStream \
         .foreachBatch(process_micro_batch) \
+        .option("checkpointLocation", "/app/data/spark_checkpoints") \
         .trigger(processingTime="2 minutes") \
         .start()
 
