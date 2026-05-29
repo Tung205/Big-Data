@@ -7,7 +7,8 @@ from google.cloud.exceptions import NotFound
 
 # --- CẤU HÌNH ---
 # Chạy trong Docker nên trỏ vào kafka1 thay vì localhost
-KAFKA_BROKER = 'kafka1:9092' 
+# KAFKA_BROKER = 'kafka1:9092' 
+KAFKA_BROKER = "kafka1:9092,kafka2:9092,kafka3:9092"
 TOPIC_NAME = 'fraud_alerts'
 PROJECT_ID = 'project-7942816b-eab8-4949-8b8' 
 DATASET_ID = 'fraud_features'
@@ -48,7 +49,7 @@ def main():
         try:
             consumer = KafkaConsumer(
                 TOPIC_NAME,
-                bootstrap_servers=[KAFKA_BROKER],
+                bootstrap_servers=KAFKA_BROKER.split(','),
                 auto_offset_reset='latest',
                 value_deserializer=lambda x: json.loads(x.decode('utf-8'))
             )
@@ -71,7 +72,7 @@ def main():
         batch.append(record)
 
         # Hễ có cảnh báo là đẩy lên mẻ nhỏ (có thể set len(batch) >= 1 để đẩy real-time tức thời)
-        if len(batch) >= 50: 
+        if len(batch) >= 100: 
             errors = client.insert_rows_json(table_ref, batch)
             if not errors:
                 print(f"[+] Đã chốt hạ {len(batch)} cảnh báo lên BigQuery!")

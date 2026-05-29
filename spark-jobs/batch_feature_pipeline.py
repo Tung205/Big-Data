@@ -6,12 +6,15 @@ from pyspark.sql.types import (
     StructType, StructField, StringType, DoubleType, IntegerType, LongType
 )
 import os
+from google.cloud import bigquery
+from google.api_core.exceptions import NotFound
 
 # Cấu hình dự án (Thay bằng Project ID và Dataset ID thật của em)
 GCP_PROJECT_ID = "project-7942816b-eab8-4949-8b8"
 BQ_DATASET = "fraud_features"
-KAFKA_BROKER = "kafka1:9092"  # Hoặc IP máy ảo nếu chạy khác mạng
+# KAFKA_BROKER = "kafka1:9092"  # Hoặc IP máy ảo nếu chạy khác mạng
 TOPIC_NAME = "raw_transactions"
+KAFKA_BROKER = "kafka1:9092,kafka2:9092,kafka3:9092"
 
 # 1. Khai báo Schema định dạng JSON mà Data Generator bắn vào Kafka
 kafka_schema = StructType([
@@ -26,6 +29,61 @@ kafka_schema = StructType([
     StructField("is_fraud", IntegerType(), True),
     StructField("unix_time", LongType(), True)
 ])
+
+def init_bigquery_tables():
+    """Tự động kiểm tra và tạo các bảng BigQuery nếu chưa tồn tại"""
+    print("\n" + "="*50)
+    print("[*] ĐANG KIỂM TRA HẠ TẦNG BIGQUERY...")
+    
+    # Khởi tạo client kết nối với Google Cloud
+    client = bigquery.Client(project=GCP_PROJECT_ID)
+    dataset_ref = client.dataset(BQ_DATASET)
+
+    # Định nghĩa cấu trúc (Schema) cho 4 bảng
+    schemas = {
+        "gender_summary": [
+            bigquery.SchemaField("gender", "STRING"),
+            bigquery.SchemaField("processing_time", "TIMESTAMP"),
+            bigquery.SchemaField("total_transactions", "INTEGER"),
+            bigquery.SchemaField("total_amount", "FLOAT"),
+            bigquery.SchemaField("avg_amount", "FLOAT"),
+        ],
+        "category_summary": [
+            bigquery.SchemaField("category", "STRING"),
+            bigquery.SchemaField("processing_time", "TIMESTAMP"),
+            bigquery.SchemaField("total_transactions", "INTEGER"),
+            bigquery.SchemaField("total_amount", "FLOAT"),
+            bigquery.SchemaField("avg_amount", "FLOAT"),
+        ],
+        "geo_summary": [
+            bigquery.SchemaField("state", "STRING"),
+            bigquery.SchemaField("city", "STRING"),
+            bigquery.SchemaField("processing_time", "TIMESTAMP"),
+            bigquery.SchemaField("total_transactions", "INTEGER"),
+            bigquery.SchemaField("total_amount", "FLOAT"),
+            bigquery.SchemaField("avg_amount", "FLOAT"),
+        ],
+        "overall_summary": [
+            bigquery.SchemaField("processing_time", "TIMESTAMP"),
+            bigquery.SchemaField("total_transactions_in_batch", "INTEGER"),
+            bigquery.SchemaField("total_volume_in_batch", "FLOAT"),
+            bigquery.SchemaField("avg_transaction_size", "FLOAT"),
+        ]
+    }
+
+    # Quét qua từng bảng để kiểm tra
+    for table_id, schema in schemas.items():
+        table_ref = dataset_ref.table(table_id)
+        try:
+            client.get_table(table_ref)
+            print(f"  [v] Bảng {table_id} đã sẵn sàng.")
+        except NotFound:
+            print(f"  [+] Bảng {table_id} chưa có. Đang tự động tạo mới...")
+            table = bigquery.Table(table_ref, schema=schema)
+            client.create_table(table)
+            print(f"  [+] Đã tạo xong bảng {table_id}!")
+            
+    print("="*50 + "\n")
 
 def process_micro_batch(batch_df, batch_id):
     """
@@ -111,14 +169,22 @@ def process_micro_batch(batch_df, batch_id):
 
 def main():
     # 2. Khởi tạo Spark Session với thư viện Kafka và BigQuery
+    # spark = SparkSession.builder \
+    #     .appName("KafkaToBigQueryPipeline") \
+    #     .config("spark.driver.memory", "4g") \
+    #     .config("spark.jars.packages", "org.apache.spark:spark-sql-kafka-0-10_2.12:3.4.1,com.google.cloud.spark:spark-bigquery-with-dependencies_2.12:0.32.2") \
+    #     .getOrCreate()
+
     spark = SparkSession.builder \
-        .appName("KafkaToBigQueryPipeline") \
-        .config("spark.driver.memory", "4g") \
-        .config("spark.jars.packages", "org.apache.spark:spark-sql-kafka-0-10_2.12:3.4.1,com.google.cloud.spark:spark-bigquery-with-dependencies_2.12:0.32.2") \
+        .appName("DistributedBatchPipeline") \
+        .master("spark://spark-master:7077") \
+        .config("spark.jars.packages", "org.apache.spark:spark-sql-kafka-0-10_2.12:3.4.1,...") \
         .getOrCreate()
 
     spark.sparkContext.setLogLevel("WARN")
 
+    init_bigquery_tables()
+    
     print("[*] Đang kết nối tới Kafka...")
 
     # 3. Kết nối trực tiếp vào Kafka Topic
@@ -140,7 +206,7 @@ def main():
     
     query = parsed_df.writeStream \
         .foreachBatch(process_micro_batch) \
-        .option("checkpointLocation", "/app/data/spark_checkpoints") \
+        .option("checkpointLocation", "/tmp/spark_checkpoints") \
         .trigger(processingTime="2 minutes") \
         .start()
 

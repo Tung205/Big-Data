@@ -1,0 +1,2 @@
+apache-flink==1.17.1
+xgboost==2.0.3

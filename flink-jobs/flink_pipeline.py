@@ -11,9 +11,10 @@ from pyflink.datastream.functions import MapFunction, KeyedProcessFunction
 from pyflink.datastream.state import ValueStateDescriptor, ListStateDescriptor
 
 # --- CẤU HÌNH ---
-KAFKA_BROKER = "kafka1:9092"
+# KAFKA_BROKER = "kafka1:9092"
 INPUT_TOPIC = "raw_transactions"
 OUTPUT_TOPIC = "fraud_alerts"
+KAFKA_BROKER = "kafka1:9092,kafka2:9092,kafka3:9092"
 
 # 1. HÀM STATELESS: XỬ LÝ ĐẶC TRƯNG CƠ BẢN (Haversine, Datetime, Age)
 class BasicFeatureExtractor(MapFunction):
@@ -142,8 +143,22 @@ class FraudPredictor(MapFunction):
         return json.dumps(alert_data)
 
 def main():
+    # ==========================================================
+    # 1. CHIẾN THUẬT "NHƯỜNG ĐƯỜNG" (WAIT-FOR-IT)
+    # ==========================================================
+    print("\n" + "="*60)
+    print("⏳ FLINK DRIVER ĐANG TẠM NGỦ 45 GIÂY...")
+    print("⏳ Lý do: Chờ Kafka khởi động và Data Generator tạo Topic.")
+    print("="*60 + "\n")
+
+    for i in range(45, 0, -5):
+        print(f"[*] Flink đang chờ... {i} giây còn lại")
+        time.sleep(5)
+        
+    print("\n[+] ĐÃ HẾT GIỜ CHỜ! TIẾN HÀNH NẠP MODEL XGBOOST VÀO CỤM...\n")
+    
     env = StreamExecutionEnvironment.get_execution_environment()
-    env.set_parallelism(1)
+    env.set_parallelism(4)
 
     env.add_jars("file:///app/flink-sql-connector-kafka-1.17.1.jar")
 
