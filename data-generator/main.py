@@ -178,14 +178,22 @@ def simulate_stream():
     environment = os.getenv("ENV", "local").lower() 
     
     if environment == "benchmark":
-        TARGET_PER_MINUTE = 50000  # 100k msgs/phút
-        DEMO_DURATION_SECONDS = 600  # 10 phút
-        TOTAL_TARGET = 500000    
+        # ==========================================
+        # MÔI TRƯỜNG GCE (CHẠY TRÊN CLOUD)
+        # ==========================================
+        # Bám sát đúng cam kết NFR trong báo cáo đồ án: 100 TPS
+        TARGET_PER_MINUTE = 6000     # Tương đương 100 TPS (Giao dịch/giây)
+        DEMO_DURATION_SECONDS = 600  # Chạy demo liên tục trong 10 phút (600s)
+        TOTAL_TARGET = 60000         # 100 TPS * 600s = 60.000 giao dịch
     else:
-        TARGET_PER_MINUTE = 6000    # 1000 TPS cho test local nhẹ nhàng
-        DEMO_DURATION_SECONDS = 300  # 5 phút
-        TOTAL_TARGET = 200000
-        
+        # ==========================================
+        # MÔI TRƯỜNG LOCAL (CHẠY TRÊN MÁY TÍNH CÁ NHÂN)
+        # ==========================================
+        # Máy cá nhân chạy Docker thường bị giới hạn CPU/RAM, 
+        # nên để 30 TPS để Flink XGBoost xử lý mượt mà, không bị dồn ứ.
+        TARGET_PER_MINUTE = 1800     # Tương đương 30 TPS
+        DEMO_DURATION_SECONDS = 300  # Chạy demo nhanh trong 5 phút (300s)
+        TOTAL_TARGET = 9000          # 30 TPS * 300s = 9.000 giao dịch
     TARGET_TPS = TARGET_PER_MINUTE // 60 
     
     print(f"[*] CHẾ ĐỘ CHẠY: {environment.upper()}")
@@ -222,7 +230,7 @@ def simulate_stream():
                 row['trans_date_trans_time'] = now.strftime("%Y-%m-%d %H:%M:%S")
                 row['unix_time'] = int(now.timestamp())
                 row['ingestion_timestamp'] = now.isoformat()
-                
+                row['ingestion_time_ms'] = int(time.time() * 1000)
                 # Bắn vào Kafka (Lệnh này bất đồng bộ, đẩy thẳng vào RAM của Kafka C client)
                 producer.send(config.TOPIC_NAME, row)
                 

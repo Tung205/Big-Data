@@ -28,6 +28,8 @@ def create_table_if_not_exists(client, table_ref):
             bigquery.SchemaField("amt", "FLOAT"),
             bigquery.SchemaField("ml_fraud_probability", "FLOAT"),
             bigquery.SchemaField("is_fraud_predicted", "INTEGER"),
+            bigquery.SchemaField("latency_ms", "INTEGER"),
+            bigquery.SchemaField("alert_time", "STRING"),
         ]
         table = bigquery.Table(table_ref, schema=schema)
         client.create_table(table)

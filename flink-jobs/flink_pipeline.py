@@ -128,17 +128,32 @@ class FraudPredictor(MapFunction):
         # Dự đoán (trả về xác suất)
         prob = self.model.predict(dmatrix)[0]
         
-        # Gắn nhãn dự đoán (Threshold = 0.5)
+        # Gắn nhãn dự đoán (Threshold = 0.7)
         data['ml_fraud_probability'] = float(prob)
-        data['is_fraud_predicted'] = 1 if prob >= 0.5 else 0
+        data['is_fraud_predicted'] = 1 if prob >= 0.7 else 0
         
+        # ======================================================
+        # TÍNH TOÁN LATENCY (ĐỘ TRỄ) THEO CÔNG THỨC TRONG BÁO CÁO
+        # ======================================================
+        alert_time_ms = int(time.time() * 1000) 
+        # Lấy ingestion_time_ms từ Kafka, nếu không có thì mặc định bằng alert_time
+        ingestion_time_ms = int(data.get('ingestion_time_ms', alert_time_ms))
+        
+        # Công thức: Latency = alertTime - ingestionTime
+        data['latency_ms'] = alert_time_ms - ingestion_time_ms
+        data['alert_time'] = datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")[:-3] # Lưu lại mốc thời gian báo động
+        # ======================================================
+
+
         # Chỉ giữ lại những cột cần thiết để ném ra Kafka / Dashboard
         alert_data = {
             'cc_num': data['cc_num'],
             'trans_date_trans_time': data['trans_date_trans_time'],
             'amt': data['amt'],
             'ml_fraud_probability': data['ml_fraud_probability'],
-            'is_fraud_predicted': data['is_fraud_predicted']
+            'is_fraud_predicted': data['is_fraud_predicted'],
+            'latency_ms': data['latency_ms'],
+            'alert_time': data['alert_time'],
         }
         return json.dumps(alert_data)
 
@@ -186,7 +201,7 @@ def main():
 
     # In ra màn hình Terminal với màu sắc/tiền tố để dễ nhận biết
     fraud_only_stream.map(
-        lambda x: f"🚨 [CẢNH BÁO GIAN LẬN] Phát hiện thẻ: {json.loads(x)['cc_num']} | Tỉ lệ khả nghi: {json.loads(x)['ml_fraud_probability']*100:.2f}% | Số tiền: ${json.loads(x)['amt']}",
+        lambda x: f"🚨 [GIAN LẬN] Thẻ: {json.loads(x)['cc_num']} | Tỉ lệ: {json.loads(x)['ml_fraud_probability']*100:.2f}% | Tiền: ${json.loads(x)['amt']} | ⚡ Độ trễ: {json.loads(x)['latency_ms']} ms",
         output_type=Types.STRING()
     ).print()
     # --------------------------
