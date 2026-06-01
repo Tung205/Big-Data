@@ -26,7 +26,7 @@ services:
       KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
       KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka1:9092
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 2
-      KAFKA_NUM_PARTITIONS: 3 # <-- THÊM DÒNG NÀY
+      KAFKA_NUM_PARTITIONS: 3
     deploy:
       resources:
         limits: { cpus: '0.5', memory: 1G }
@@ -40,7 +40,7 @@ services:
       KAFKA_BROKER_ID: 2
       KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
       KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka2:9092
-      KAFKA_NUM_PARTITIONS: 3 # <-- THÊM DÒNG NÀY
+      KAFKA_NUM_PARTITIONS: 3
     deploy:
       resources:
         limits: { cpus: '0.5', memory: 1G }
@@ -54,13 +54,32 @@ services:
       KAFKA_BROKER_ID: 3
       KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
       KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka3:9092
-      KAFKA_NUM_PARTITIONS: 3 # <-- THÊM DÒNG NÀY
+      KAFKA_NUM_PARTITIONS: 3
     deploy:
       resources:
         limits: { cpus: '0.5', memory: 1G }
 
- # ==========================================
-  # KHỐI 2: SPARK CLUSTER (1 Master, 2 Workers) - Bản chính chủ Apache
+  kafka-setup:
+    image: confluentinc/cp-kafka:7.3.0
+    networks:
+      - fraud-network
+    depends_on:
+      - kafka1
+      - kafka2
+      - kafka3
+    command: >
+      bash -c "
+        echo '⏳ Đang chờ ĐỦ 3 BROKERS của Kafka Cluster sẵn sàng...'
+        cub kafka-ready -b kafka1:9092 3 60 
+        
+        echo '🛠️ Cả cụm Kafka đã lên! Đang tạo các Topic rỗng...'
+        kafka-topics --create --if-not-exists --topic raw_transactions --bootstrap-server kafka1:9092 --partitions 3 --replication-factor 2
+        kafka-topics --create --if-not-exists --topic fraud_alerts --bootstrap-server kafka1:9092 --partitions 3 --replication-factor 2
+        echo '✅ Xong! Thợ xây rút lui.'
+      "
+
+  # ==========================================
+  # KHỐI 2: SPARK CLUSTER (1 Master, 2 Workers)
   # ==========================================
   spark-master:
     image: apache/spark:3.4.1
@@ -68,8 +87,8 @@ services:
       - fraud-network
     command: /opt/spark/bin/spark-class org.apache.spark.deploy.master.Master --host spark-master
     ports:
-      - "8080:8080" # Xem dashboard Spark
-      - "7077:7077" # Cổng kết nối nội bộ cho Worker
+      - "8080:8080"
+      - "7077:7077"
     deploy:
       resources:
         limits: { cpus: '1.0', memory: 2G }
@@ -82,7 +101,10 @@ services:
     command: /opt/spark/bin/spark-class org.apache.spark.deploy.worker.Worker spark://spark-master:7077
     deploy:
       resources:
-        limits: { cpus: '2.0', memory: 4G }
+        limits: 
+          # Chuyển đổi động: Nếu có file .env thì lấy cấu hình GCE, không thì dùng 2.0 CPU / 4G RAM cho Local
+          cpus: '${SPARK_WORKER_CPU:-2.0}'
+          memory: '${SPARK_WORKER_MEM:-4G}'
 
   spark-worker-2:
     image: apache/spark:3.4.1
@@ -92,19 +114,20 @@ services:
     command: /opt/spark/bin/spark-class org.apache.spark.deploy.worker.Worker spark://spark-master:7077
     deploy:
       resources:
-        limits: { cpus: '2.0', memory: 4G }
+        limits: 
+          cpus: '${SPARK_WORKER_CPU:-2.0}'
+          memory: '${SPARK_WORKER_MEM:-4G}'
 
   # ==========================================
   # KHỐI 3: FLINK CLUSTER (1 JobManager, 2 TaskManagers)
   # ==========================================
   flink-jobmanager:
-    # image: flink:1.17.1-scala_2.12
     build: ./flink-cluster
     networks:
       - fraud-network
     command: jobmanager
     ports:
-      - "8081:8081" # Xem dashboard Flink
+      - "8081:8081"
     environment:
       - |
         FLINK_PROPERTIES=
@@ -114,7 +137,6 @@ services:
         limits: { cpus: '1.0', memory: 2G }
 
   flink-taskmanager-1:
-    # image: flink:1.17.1-scala_2.12
     build: ./flink-cluster
     depends_on: [flink-jobmanager]
     networks:
@@ -127,10 +149,11 @@ services:
         taskmanager.numberOfTaskSlots: 2
     deploy:
       resources:
-        limits: { cpus: '2.0', memory: 4G }
+        limits: 
+          cpus: '${FLINK_TM_CPU:-2.0}'
+          memory: '${FLINK_TM_MEM:-4G}'
 
   flink-taskmanager-2:
-    # image: flink:1.17.1-scala_2.12
     build: ./flink-cluster
     depends_on: [flink-jobmanager]
     networks:
@@ -143,7 +166,9 @@ services:
         taskmanager.numberOfTaskSlots: 2
     deploy:
       resources:
-        limits: { cpus: '2.0', memory: 4G }
+        limits: 
+          cpus: '${FLINK_TM_CPU:-2.0}'
+          memory: '${FLINK_TM_MEM:-4G}'
 
   # ==========================================
   # KHỐI 4: ỨNG DỤNG CỦA EM (Client Nodes)
@@ -156,22 +181,22 @@ services:
     volumes:
       - ./data:/app/data:ro 
     environment:
-      # TRỎ VÀO CẢ 3 BROKER KAFKA
       - KAFKA_BROKERS=kafka1:9092,kafka2:9092,kafka3:9092
       - TOPIC_NAME=raw_transactions
       - DATA_FILE=/app/data/fraudTrain.csv
-      - ENV=local
+      # Công tắc chuyển đổi TPS: Tự động nhận biến APP_ENV, nếu không có sẽ chạy 'local' (30 TPS)
+      - ENV=${APP_ENV:-local}
     deploy:
       resources:
         limits: { cpus: '1.0', memory: 1G }
         
-  # Sửa lại spark-batch thành node chỉ làm nhiệm vụ ném Job (Driver)
   spark-driver:
     build: ./spark-jobs
     networks:
       - fraud-network
     depends_on: [spark-master, kafka1]
     volumes:
+      # GIỮ LẠI CHO LOCAL: Trên GCE em vẫn ném file JSON này lên cùng thư mục để Docker khỏi báo lỗi
       - ./application_default_credentials.json:/app/application_default_credentials.json:ro
     environment:
       - GOOGLE_APPLICATION_CREDENTIALS=/app/application_default_credentials.json
@@ -194,9 +219,26 @@ services:
       - fraud-network
     depends_on: [kafka1]
     volumes:
+      # GIỮ LẠI CHO LOCAL: Trên GCE em vẫn ném file JSON này lên cùng thư mục để Docker khỏi báo lỗi
       - ./application_default_credentials.json:/app/application_default_credentials.json:ro
     environment:
       - GOOGLE_APPLICATION_CREDENTIALS=/app/application_default_credentials.json
+    deploy:
+      resources:
+        limits: { cpus: '0.5', memory: 1G }
+
+  # ==========================================
+  # KHỐI 5: DASHBOARD MONITORING
+  # ==========================================
+  grafana:
+    image: grafana/grafana:latest
+    networks:
+      - fraud-network
+    ports:
+      - "3000:3000"
+    environment:
+      # Đã XÓA biến GOOGLE_APPLICATION_CREDENTIALS. Grafana giờ là "Cloud-Native"
+      - GF_INSTALL_PLUGINS=grafana-bigquery-datasource
     deploy:
       resources:
         limits: { cpus: '0.5', memory: 1G }

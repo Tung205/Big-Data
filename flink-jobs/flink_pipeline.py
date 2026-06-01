@@ -162,15 +162,13 @@ def main():
     # 1. CHIẾN THUẬT "NHƯỜNG ĐƯỜNG" (WAIT-FOR-IT)
     # ==========================================================
     print("\n" + "="*60)
-    print("⏳ FLINK DRIVER ĐANG TẠM NGỦ 45 GIÂY...")
-    print("⏳ Lý do: Chờ Kafka khởi động và Data Generator tạo Topic.")
+    print("⏳ FLINK ĐANG CHỜ 20 GIÂY ĐỂ HẠ TẦNG KAFKA HOÀN THIỆN...")
     print("="*60 + "\n")
-
-    for i in range(45, 0, -5):
-        print(f"[*] Flink đang chờ... {i} giây còn lại")
-        time.sleep(5)
-        
-    print("\n[+] ĐÃ HẾT GIỜ CHỜ! TIẾN HÀNH NẠP MODEL XGBOOST VÀO CỤM...\n")
+    
+    time.sleep(20) # Chờ thợ xây tạo xong topic
+    
+    print("\n[+] HẠ TẦNG ĐÃ XONG! TIẾN HÀNH NẠP MODEL XGBOOST...\n")
+    # ... (Các đoạn code khởi tạo env bên dưới giữ nguyên) ...
     
     env = StreamExecutionEnvironment.get_execution_environment()
     env.set_parallelism(4)
