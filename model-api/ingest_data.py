@@ -9,27 +9,7 @@ def build_faiss_index():
     # Tập hợp các quy tắc tinh chỉnh dựa trên phân phối dữ liệu thực tế
     knowledge_base = [
         # ==========================================
-        # NHÓM 1: GIAO DỊCH SAFE (XGBOOST ĐOÁN NHẦM - FALSE POSITIVES)
-        # ==========================================
-        Document(
-            page_content="Case SAFE-01 (Cú đêm mua sắm/Thanh toán online): Giao dịch an toàn. Đặc điểm: Diễn ra vào ban đêm (22h-3h), người dùng thường khá trẻ (age < 40), số tiền có thể rất cao hoặc rất thấp, thuộc nhóm danh mục 11 hoặc giải trí. Nguyên nhân: Thói quen thức khuya mua đồ công nghệ, nạp game hoặc thanh toán quốc tế của người trẻ. XGBoost hay báo nhầm vì nó nhạy cảm với khung giờ đêm.",
-            metadata={"type": "false_positive", "status": "SAFE"}
-        ),
-        Document(
-            page_content="Case SAFE-02 (Thanh toán tự động / Subscription): Giao dịch an toàn. Đặc điểm: Thường xảy ra vào rạng sáng hoặc đêm khuya, số tiền lẻ hoặc nhỏ (dưới 50$), thuộc danh mục an toàn hoặc online. Khoảng cách (distance_km) thường ổn định. Nguyên nhân: Hệ thống trừ tiền tự động của Netflix, Spotify, iCloud hoặc các dịch vụ đám mây hoạt động vào giờ thấp điểm.",
-            metadata={"type": "false_positive", "status": "SAFE"}
-        ),
-        Document(
-            page_content="Case SAFE-03 (Ngày mua sắm tấp nập): Giao dịch an toàn. Đặc điểm: Tần suất 1 ngày (velocity_1d_count) cao (>6 lần), tổng tiền lớn, nhưng khoảng cách (distance_km) bình thường và thời gian giữa các giao dịch (time_since_last_trans) ở mức hợp lý (vài chục phút đến vài giờ). Nguyên nhân: Khách hàng đi siêu thị, trung tâm thương mại quẹt thẻ liên tục ở các quầy khác nhau.",
-            metadata={"type": "false_positive", "status": "SAFE"}
-        ),
-        Document(
-            page_content="Case SAFE-04 (Chi tiêu lớn hiếm hoi): Giao dịch an toàn. Đặc điểm: Số tiền cực lớn (>1000$), nhưng thời gian cách giao dịch trước đó rất dài (hàng chục ngàn giây, tức là nhiều giờ/nhiều ngày không giao dịch), tần suất trong ngày rất thấp. Nguyên nhân: Mua sắm tài sản lớn (vé máy bay, nội thất) một cách có chủ đích.",
-            metadata={"type": "false_positive", "status": "SAFE"}
-        ),
-
-        # ==========================================
-        # NHÓM 2: GIAO DỊCH FRAUD (GIAN LẬN THẬT - TRUE POSITIVES)
+        # GIAO DỊCH FRAUD (GIAN LẬN THẬT - TRUE POSITIVES)
         # ==========================================
         Document(
             page_content="Case FRAUD-01 (Hacker càn quét thẻ ban đêm): GIAN LẬN. Đặc điểm: Diễn ra vào ban đêm (22h-3h) KẾT HỢP với thời gian giữa các giao dịch cực kỳ ngắn (time_since_last_trans < 60 giây) và tần suất cao. Nguyên nhân: Khác với Case SAFE-01 (mua sắm bình thường), đây là dấu hiệu bot tự động bắn request liên tục để rút cạn tiền trong thẻ khi chủ thẻ đang ngủ.",
