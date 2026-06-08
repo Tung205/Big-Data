@@ -22,6 +22,7 @@ def create_table_if_not_exists(client, table_ref):
     except NotFound:
         print(f"[*] Chưa có bảng {TABLE_ID}. Đang tiến hành tạo mới...")
         # Định nghĩa đúng các cột mà luồng Flink đẩy ra
+        
         schema = [
             bigquery.SchemaField("cc_num", "STRING"),
             bigquery.SchemaField("trans_date_trans_time", "STRING"),
@@ -30,6 +31,14 @@ def create_table_if_not_exists(client, table_ref):
             bigquery.SchemaField("is_fraud_predicted", "INTEGER"),
             bigquery.SchemaField("latency_ms", "INTEGER"),
             bigquery.SchemaField("alert_time", "STRING"),
+            bigquery.SchemaField("category", "STRING"),
+            bigquery.SchemaField("age", "INTEGER"),
+            bigquery.SchemaField("gender", "STRING"),
+            bigquery.SchemaField("velocity_1d_count", "INTEGER"),
+            bigquery.SchemaField("velocity_1d_amt_sum", "FLOAT"),
+            bigquery.SchemaField("distance_km", "FLOAT"),
+            bigquery.SchemaField("hour", "INTEGER"),
+            bigquery.SchemaField("city_pop", "INTEGER")
         ]
         table = bigquery.Table(table_ref, schema=schema)
         client.create_table(table)

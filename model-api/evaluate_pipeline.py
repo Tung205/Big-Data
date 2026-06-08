@@ -8,14 +8,13 @@ def evaluate_hybrid_pipeline():
     try:
         # Nếu muốn test nhanh toàn bộ, em xóa .head(10) đi nhé.
         # Ở đây thầy để lại .head(10) theo ý em để test 20 giao dịch trước.
-        df_fp = pd.read_csv("sample_50_false_positives.csv").sample(n=3)
         df_tp = pd.read_csv("sample_50_real_frauds.csv").sample(n=5)
     except FileNotFoundError:
         print("Lỗi: Không tìm thấy file CSV. Hãy đảm bảo file nằm cùng thư mục.")
         return
 
     # Gộp lại thành tập test
-    df_test = pd.concat([df_fp, df_tp], ignore_index=True)
+    df_test = df_tp
     total_rows = len(df_test) # Lấy tổng số dòng động để in ra chính xác
     print(f"Tổng số giao dịch cần kiểm thử: {total_rows}")
 

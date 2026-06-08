@@ -12,6 +12,8 @@ services:
       - fraud-network
     environment:
       ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 4000              # 👈 Tăng thời gian 1 nhịp đập lên 4 giây (Mặc định là 2s)
+      ZOOKEEPER_MAX_SESSION_TIMEOUT: 60000   # 👈 Cho phép các session chịu đựng lag lên tới 60 giây
     deploy:
       resources:
         limits: { cpus: '0.5', memory: 1G }
@@ -29,7 +31,7 @@ services:
       KAFKA_NUM_PARTITIONS: 3
     deploy:
       resources:
-        limits: { cpus: '0.5', memory: 1G }
+        limits: { cpus: '1.0', memory: 2G }
 
   kafka2:
     image: confluentinc/cp-kafka:7.3.0
@@ -43,7 +45,7 @@ services:
       KAFKA_NUM_PARTITIONS: 3
     deploy:
       resources:
-        limits: { cpus: '0.5', memory: 1G }
+        limits: { cpus: '1.0', memory: 2G }
 
   kafka3:
     image: confluentinc/cp-kafka:7.3.0
@@ -57,7 +59,7 @@ services:
       KAFKA_NUM_PARTITIONS: 3
     deploy:
       resources:
-        limits: { cpus: '0.5', memory: 1G }
+        limits: { cpus: '1.0', memory: 2G }
 
   kafka-setup:
     image: confluentinc/cp-kafka:7.3.0
@@ -102,7 +104,6 @@ services:
     deploy:
       resources:
         limits: 
-          # Chuyển đổi động: Nếu có file .env thì lấy cấu hình GCE, không thì dùng 2.0 CPU / 4G RAM cho Local
           cpus: '${SPARK_WORKER_CPU:-2.0}'
           memory: '${SPARK_WORKER_MEM:-4G}'
 
@@ -184,11 +185,10 @@ services:
       - KAFKA_BROKERS=kafka1:9092,kafka2:9092,kafka3:9092
       - TOPIC_NAME=raw_transactions
       - DATA_FILE=/app/data/fraudTrain.csv
-      # Công tắc chuyển đổi TPS: Tự động nhận biến APP_ENV, nếu không có sẽ chạy 'local' (30 TPS)
       - ENV=${APP_ENV:-local}
     deploy:
       resources:
-        limits: { cpus: '1.0', memory: 1G }
+        limits: { cpus: '1.0', memory: 2G }
         
   spark-driver:
     build: ./spark-jobs
@@ -196,13 +196,12 @@ services:
       - fraud-network
     depends_on: [spark-master, kafka1]
     volumes:
-      # GIỮ LẠI CHO LOCAL: Trên GCE em vẫn ném file JSON này lên cùng thư mục để Docker khỏi báo lỗi
       - ./application_default_credentials.json:/app/application_default_credentials.json:ro
     environment:
       - GOOGLE_APPLICATION_CREDENTIALS=/app/application_default_credentials.json
     deploy:
       resources:
-        limits: { cpus: '1.0', memory: 2G }
+        limits: { cpus: '2.0', memory: 4G }
 
   flink-driver:
     build: ./flink-jobs
@@ -211,7 +210,7 @@ services:
     depends_on: [flink-jobmanager, kafka1]
     deploy:
       resources:
-        limits: { cpus: '1.0', memory: 2G }
+        limits: { cpus: '2.0', memory: 6G }
 
   bq-sink:
     build: ./bq-sink
@@ -219,13 +218,12 @@ services:
       - fraud-network
     depends_on: [kafka1]
     volumes:
-      # GIỮ LẠI CHO LOCAL: Trên GCE em vẫn ném file JSON này lên cùng thư mục để Docker khỏi báo lỗi
       - ./application_default_credentials.json:/app/application_default_credentials.json:ro
     environment:
       - GOOGLE_APPLICATION_CREDENTIALS=/app/application_default_credentials.json
     deploy:
       resources:
-        limits: { cpus: '0.5', memory: 1G }
+        limits: { cpus: '1.0', memory: 2G }
 
   # ==========================================
   # KHỐI 5: DASHBOARD MONITORING
@@ -237,8 +235,34 @@ services:
     ports:
       - "3000:3000"
     environment:
-      # Đã XÓA biến GOOGLE_APPLICATION_CREDENTIALS. Grafana giờ là "Cloud-Native"
       - GF_INSTALL_PLUGINS=grafana-bigquery-datasource
     deploy:
       resources:
         limits: { cpus: '0.5', memory: 1G }
+
+  model-api:
+    build: ./model-api
+    networks:
+      - fraud-network
+    ports:
+      - "8000:8000"
+    volumes:
+      # Ánh xạ thư mục chứa models từ máy vật lý vào container
+      - ./model-api/models:/app/models
+    environment:
+      # Truyền API Key từ file môi trường .env cục bộ tránh lộ thông tin
+      - GOOGLE_API_KEY=${GOOGLE_API_KEY}
+    deploy:
+      resources:
+        limits: { cpus: '2.0', memory: 4G }
+
+  grafana-simulator:
+    build: ./simulator
+    container_name: big-data-grafana-simulator
+    networks:
+      - fraud-network
+    ports:
+      - "8082:8082"
+    deploy:
+      resources:
+        limits: { cpus: '0.2', memory: '128M' } # Cực kỳ nhẹ, tốn rất ít RAM

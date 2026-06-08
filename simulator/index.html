@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Grafana Fraud Investigation Simulator</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        .markdown-body h4 { font-size: 1.15rem; font-weight: 700; color: #f3faf7; margin-top: 1rem; margin-bottom: 0.5rem; border-bottom: 1px solid #374151; padding-bottom: 0.25rem;}
+        .markdown-body ul { list-style-type: disc; padding-left: 1.25rem; margin-bottom: 0.75rem; color: #d1d5db; }
+        .markdown-body li { margin-bottom: 0.25rem; }
+        .markdown-body p { color: #e5e7eb; margin-bottom: 0.75rem; line-height: 1.6; }
+    </style>
+</head>
+<body class="bg-[#161719] text-[#e0e0e0] min-h-screen p-6">
+
+    <div class="flex items-center justify-between border-b border-[#2c2c2e] pb-4 mb-6">
+        <div>
+            <h1 class="text-2xl font-bold text-[#f1f1f1] flex items-center gap-2">
+                <span class="text-amber-500">📊</span> Grafana Fraud Investigation Panel (Simulator)
+            </h1>
+            <p class="text-xs text-gray-400 mt-1">Đồ án tốt nghiệp Hệ thống phát hiện gian lận thời gian thực - Nguyễn Thanh Tùng</p>
+        </div>
+        <div class="bg-[#22252b] px-3 py-1.5 rounded text-xs border border-green-500/30 text-green-400 font-mono">
+            API Endpoint: localhost:8000
+        </div>
+    </div>
+
+    <div class="grid grid-cols-1 xl:grid-cols-5 gap-6">
+        
+        <div class="xl:col-span-3 bg-[#1f2226] rounded-md border border-[#2c2c2e] p-4 shadow-xl">
+            <h2 class="text-sm font-semibold text-gray-300 uppercase tracking-wider mb-3 flex items-center gap-2">
+                🔴 Real-time Fraud Logs (Click một dòng để điều tra RCA)
+            </h2>
+            <div class="overflow-x-auto rounded border border-[#2c2c2e]">
+                <table class="min-w-full text-xs text-left text-gray-300">
+                    <thead class="bg-[#2c323d] text-gray-400 uppercase font-mono text-[11px] border-b border-[#2c2c2e]">
+                        <tr>
+                            <th class="p-3">Thẻ (cc_num)</th>
+                            <th class="p-3">Số tiền (amt)</th>
+                            <th class="p-3">Giờ (hour)</th>
+                            <th class="p-3">Tuổi (age)</th>
+                            <th class="p-3">Khoảng cách (km)</th>
+                            <th class="p-3">Tần suất/Ngày</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-[#2c2c2e] font-mono">
+                        <tr onclick="investigate(this)" class="hover:bg-[#262930] cursor-pointer transition-colors"
+                            data-txn='{"amt":75.2, "city_pop":45000, "hour":2, "day":5, "month":6, "day_of_week":4, "age":34, "distance_km":120.84, "time_since_last_trans_sec":149, "velocity_1d_count":5, "velocity_1d_amt_sum":1200.5, "gender_encoded":1, "category_encoded":11}'>
+                            <td class="p-3 text-amber-400 font-semibold">47***89 (Dòng 47)</td>
+                            <td class="p-3 text-red-400">75.20 USD</td>
+                            <td class="p-3">02h (Đêm)</td>
+                            <td class="p-3">34 tuổi</td>
+                            <td class="p-3 text-orange-400">120.84 km</td>
+                            <td class="p-3">5 lần</td>
+                        </tr>
+                        <tr onclick="investigate(this)" class="hover:bg-[#262930] cursor-pointer transition-colors"
+                            data-txn='{"amt":926.72, "city_pop":1920, "hour":22, "day":8, "month":10, "day_of_week":3, "age":23, "distance_km":81.22, "time_since_last_trans_sec":217, "velocity_1d_count":7, "velocity_1d_amt_sum":6053.85, "gender_encoded":0, "category_encoded":11}'>
+                            <td class="p-3 text-amber-400 font-semibold">14***32 (Dòng 14)</td>
+                            <td class="p-3 text-red-400">926.72 USD</td>
+                            <td class="p-3">22h (Đêm)</td>
+                            <td class="p-3">23 tuổi</td>
+                            <td class="p-3">81.22 km</td>
+                            <td class="p-3 text-orange-400">7 lần (6053$)</td>
+                        </tr>
+                        <tr onclick="investigate(this)" class="hover:bg-[#262930] cursor-pointer transition-colors"
+                            data-txn='{"amt":1077.25, "city_pop":84000, "hour":23, "day":11, "month":11, "day_of_week":5, "age":45, "distance_km":54.12, "time_since_last_trans_sec":78534, "velocity_1d_count":3, "velocity_1d_amt_sum":1500.0, "gender_encoded":1, "category_encoded":11}'>
+                            <td class="p-3 text-amber-400 font-semibold">26***51 (Dòng 26)</td>
+                            <td class="p-3 text-red-400">1077.25 USD</td>
+                            <td class="p-3">23h (Đêm)</td>
+                            <td class="p-3">45 tuổi</td>
+                            <td class="p-3">54.12 km</td>
+                            <td class="p-3 text-orange-400">Ngủ đông (22h)</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="xl:col-span-2 flex flex-col bg-[#1f2226] rounded-md border border-[#2c2c2e] p-4 shadow-xl min-h-[500px]">
+            <h2 class="text-sm font-semibold text-gray-300 uppercase tracking-wider mb-3 flex items-center gap-2 border-b border-[#2c2c2e] pb-2">
+                🤖 AI Root Cause Analysis (Gemini + RAG)
+            </h2>
+            
+            <div id="loading" class="hidden my-auto mx-auto text-center">
+                <div class="animate-spin rounded-full h-10 w-10 border-b-2 border-amber-500 mx-auto mb-3"></div>
+                <p class="text-sm text-gray-400">Đang truy xuất kịch bản RAG & gọi Gemini phân tích...</p>
+            </div>
+
+            <div id="placeholder" class="my-auto mx-auto text-center p-6 text-gray-500">
+                <span class="text-4xl block mb-2">🕵️‍♂️</span>
+                <p class="text-sm">Vui lòng click vào một dòng giao dịch để nhận báo cáo điều tra.</p>
+            </div>
+
+            <div id="result-box" class="hidden flex-1 overflow-y-auto">
+                <div class="bg-red-950/20 border border-red-500/30 rounded p-3 mb-4 flex items-center justify-between">
+                    <span class="text-red-400 text-xs font-bold uppercase tracking-wide">🚨 Status: FRAUD_CONFIRMED</span>
+                    <span class="text-[10px] bg-red-500 text-white px-1.5 py-0.5 rounded font-mono">CRITICAL</span>
+                </div>
+                <div id="markdown-content" class="markdown-body text-sm text-gray-300"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_URL = "http://localhost:8000/explain-fraud";
+
+        async function investigate(rowElement) {
+            document.getElementById("placeholder").classList.add("hidden");
+            document.getElementById("result-box").classList.add("hidden");
+            document.getElementById("loading").classList.remove("hidden");
+
+            document.querySelectorAll("tbody tr").forEach(tr => tr.classList.remove("bg-[#2c323d]"));
+            if(rowElement) rowElement.classList.add("bg-[#2c323d]");
+
+            const txnData = JSON.parse(rowElement.getAttribute("data-txn"));
+            await fetchAnalysis(txnData);
+        }
+
+        async function fetchAnalysis(payload) {
+            try {
+                const response = await fetch(API_URL, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(payload)
+                });
+                const data = await response.json();
+                
+                document.getElementById("markdown-content").innerHTML = marked.parse(data.explanation_markdown);
+                
+                document.getElementById("loading").classList.add("hidden");
+                document.getElementById("result-box").classList.remove("hidden");
+            } catch (error) {
+                alert("Lỗi kết nối đến API Backend (Cổng 8000). Hãy kiểm tra xem container API đã chạy chưa!");
+                document.getElementById("loading").classList.add("hidden");
+                document.getElementById("placeholder").classList.remove("hidden");
+            }
+        }
+
+        window.onload = async function() {
+            const urlParams = new URLSearchParams(window.location.search);
+            if (urlParams.has('amt')) {
+                document.getElementById("placeholder").classList.add("hidden");
+                document.getElementById("loading").classList.remove("hidden");
+
+                const payload = {
+                    amt: parseFloat(urlParams.get('amt')),
+                    city_pop: parseInt(urlParams.get('city_pop') || 5000),
+                    hour: parseInt(urlParams.get('hour')),
+                    day: parseInt(urlParams.get('day') || 1),
+                    month: parseInt(urlParams.get('month') || 1),
+                    day_of_week: parseInt(urlParams.get('day_of_week') || 1),
+                    age: parseInt(urlParams.get('age')),
+                    distance_km: parseFloat(urlParams.get('distance_km')),
+                    time_since_last_trans_sec: parseFloat(urlParams.get('time_since_last_trans_sec')),
+                    velocity_1d_count: parseFloat(urlParams.get('velocity_1d_count')),
+                    velocity_1d_amt_sum: parseFloat(urlParams.get('velocity_1d_amt_sum')),
+                    gender_encoded: parseInt(urlParams.get('gender_encoded') || 1),
+                    category_encoded: parseInt(urlParams.get('category_encoded'))
+                };
+                await fetchAnalysis(payload);
+            }
+        };
+    </script>
+</body>
+</html>

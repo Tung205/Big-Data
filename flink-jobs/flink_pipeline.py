@@ -154,6 +154,15 @@ class FraudPredictor(MapFunction):
             'is_fraud_predicted': data['is_fraud_predicted'],
             'latency_ms': data['latency_ms'],
             'alert_time': data['alert_time'],
+            'category': data['category'], # Thêm cột category để dashboard có thể phân tích theo loại giao dịch
+            'age': data['age'], # Thêm cột age để dashboard có thể phân tích theo độ tuổi
+            'gender': data['gender'], # Thêm cột gender để dashboard có thể phân tích theo giới tính
+            'velocity_1d_count': data['velocity_1d_count'], # Thêm cột velocity_1d_count để dashboard có thể phân tích theo số lượng giao dịch trong 24h
+            'velocity_1d_amt_sum': data['velocity_1d_amt_sum'], # Thêm cột velocity_1d_amt_sum để dashboard có thể phân tích theo tổng tiền giao dịch trong 24h
+            'distance_km': data['distance_km'], # Thêm cột distance_km để dashboard có thể phân tích theo khoảng cách giao dịch
+            'hour': data['hour'], # Thêm cột hour để dashboard có thể phân tích theo giờ giao dịch
+            'city_pop': data['city_pop'], # Thêm cột city_pop để dashboard có thể phân tích theo dân số thành phố
+            
         }
         return json.dumps(alert_data)
 

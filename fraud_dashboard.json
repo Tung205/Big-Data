@@ -1,0 +1,117 @@
+{
+  "annotations": { "list": [] },
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 0,
+  "id": null,
+  "links": [],
+  "liveNow": true,
+  "panels": [
+    {
+      "title": "Độ trễ xử lý (Latency) theo thời gian thực",
+      "type": "timeseries",
+      "gridPos": { "h": 4, "w": 8, "x": 0, "y": 0 },
+      "id": 1,
+      "targets": [{ "rawSql": "SELECT CAST(alert_time AS TIMESTAMP) as time, latency_ms FROM `project-7942816b-eab8-4949-8b8.fraud_features.realtime_fraud_logs` WHERE alert_time IS NOT NULL ORDER BY alert_time DESC LIMIT 100" }],
+      "options": { "custom": { "drawStyle": "line", "lineInterpolation": "smooth", "lineWidth": 2, "fillOpacity": 15 } }
+    },
+    {
+      "title": "Trung bình Latency (ms)",
+      "type": "stat",
+      "gridPos": { "h": 4, "w": 4, "x": 8, "y": 0 },
+      "id": 2,
+      "targets": [{ "rawSql": "SELECT AVG(latency_ms) as avg_latency FROM `project-7942816b-eab8-4949-8b8.fraud_features.realtime_fraud_logs`" }]
+    },
+    {
+      "title": "Biến động Số lượng Giao dịch (Mỗi Batch)",
+      "type": "timeseries",
+      "gridPos": { "h": 4, "w": 8, "x": 12, "y": 0 },
+      "id": 3,
+      "targets": [{ "rawSql": "SELECT processing_time as time, total_transactions_in_batch FROM `project-7942816b-eab8-4949-8b8.fraud_features.overall_summary` ORDER BY processing_time DESC LIMIT 50" }]
+    },
+    {
+      "title": "Giá trị Giao dịch Trung bình",
+      "type": "stat",
+      "gridPos": { "h": 4, "w": 4, "x": 20, "y": 0 },
+      "id": 4,
+      "targets": [{ "rawSql": "SELECT avg_transaction_size FROM `project-7942816b-eab8-4949-8b8.fraud_features.overall_summary` ORDER BY processing_time DESC LIMIT 1" }]
+    },
+    {
+      "title": "🔴 REAL-TIME FRAUD LOGS (CLICK DÒNG ĐỂ ĐIỀU TRA)",
+      "type": "table",
+      "gridPos": { "h": 12, "w": 14, "x": 0, "y": 4 },
+      "id": 5,
+      "targets": [
+        { "rawSql": "SELECT alert_time, cc_num, amt, hour, age, distance_km, velocity_1d_count, velocity_1d_amt_sum, category FROM `project-7942816b-eab8-4949-8b8.fraud_features.realtime_fraud_logs` WHERE is_fraud_predicted = 1 ORDER BY alert_time DESC LIMIT 30" }
+      ],
+      "options": {
+        "overrides": [
+          {
+            "matcher": { "id": "byName", "options": "cc_num" },
+            "properties": [
+              { "id": "custom.cellOptions", "value": { "type": "color-text" } },
+              {
+                "id": "links",
+                "value": [
+                  {
+                    "title": "Gửi qua LLM phân tích",
+                    "url": "?var-cc_num=${__data.fields.cc_num}&var-amt=${__data.fields.amt}&var-hour=${__data.fields.hour}&var-age=${__data.fields.age}&var-distance_km=${__data.fields.distance_km}&var-velocity_1d_count=${__data.fields.velocity_1d_count}&var-velocity_1d_amt_sum=${__data.fields.velocity_1d_amt_sum}&var-category_encoded=${__data.fields.category}"
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "title": "🤖 AI ROOT CAUSE ANALYSIS (GEMINI + RAG)",
+      "type": "text",
+      "gridPos": { "h": 12, "w": 10, "x": 14, "y": 4 },
+      "id": 6,
+      "options": {
+        "content": "<iframe src=\"http://localhost:8000/?cc_num=${cc_num}&amt=${amt}&hour=${hour}&age=${age}&distance_km=${distance_km}&velocity_1d_count=${velocity_1d_count}&velocity_1d_amt_sum=${velocity_1d_amt_sum}&category_encoded=${category_encoded}\" width=\"100%\" height=\"100%\" frameborder=\"0\"></iframe>",
+        "mode": "html"
+      }
+    },
+    {
+      "title": "Thống kê Tổng Giao Dịch theo Danh Mục",
+      "type": "barchart",
+      "gridPos": { "h": 8, "w": 8, "x": 0, "y": 16 },
+      "id": 7,
+      "targets": [{ "rawSql": "SELECT category, SUM(total_transactions) as total_tx FROM `project-7942816b-eab8-4949-8b8.fraud_features.category_summary` GROUP BY category ORDER BY total_tx DESC LIMIT 15" }],
+      "options": { "orientation": "horizontal" }
+    },
+    {
+      "title": "Phân bổ Giao dịch theo Giới tính",
+      "type": "barchart",
+      "gridPos": { "h": 8, "w": 8, "x": 8, "y": 16 },
+      "id": 8,
+      "targets": [{ "rawSql": "SELECT gender, SUM(total_transactions) as total_tx FROM `project-7942816b-eab8-4949-8b8.fraud_features.gender_summary` GROUP BY gender" }]
+    },
+    {
+      "title": "Top 15 Bang (State) Giao Dịch Nhiều Nhất",
+      "type": "barchart",
+      "gridPos": { "h": 8, "w": 8, "x": 16, "y": 16 },
+      "id": 9,
+      "targets": [{ "rawSql": "SELECT state, SUM(total_transactions) as total_tx FROM `project-7942816b-eab8-4949-8b8.fraud_features.geo_summary` GROUP BY state ORDER BY total_tx DESC LIMIT 15" }],
+      "options": { "orientation": "horizontal" }
+    }
+  ],
+  "schemaVersion": 38,
+  "style": "dark",
+  "timezone": "browser",
+  "title": "HỆ THỐNG PHÁT HIỆN GIAN LẬN THỜI GIAN THỰC",
+  "variables": {
+    "list": [
+      { "current": { "value": "" }, "hide": 2, "name": "cc_num", "type": "textbox" },
+      { "current": { "value": "0" }, "hide": 2, "name": "amt", "type": "textbox" },
+      { "current": { "value": "0" }, "hide": 2, "name": "hour", "type": "textbox" },
+      { "current": { "value": "0" }, "hide": 2, "name": "age", "type": "textbox" },
+      { "current": { "value": "0" }, "hide": 2, "name": "distance_km", "type": "textbox" },
+      { "current": { "value": "0" }, "hide": 2, "name": "velocity_1d_count", "type": "textbox" },
+      { "current": { "value": "0" }, "hide": 2, "name": "velocity_1d_amt_sum", "type": "textbox" },
+      { "current": { "value": "" }, "hide": 2, "name": "category_encoded", "type": "textbox" }
+    ]
+  }
+}
