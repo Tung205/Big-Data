@@ -38,7 +38,8 @@ def create_table_if_not_exists(client, table_ref):
             bigquery.SchemaField("velocity_1d_amt_sum", "FLOAT"),
             bigquery.SchemaField("distance_km", "FLOAT"),
             bigquery.SchemaField("hour", "INTEGER"),
-            bigquery.SchemaField("city_pop", "INTEGER")
+            bigquery.SchemaField("city_pop", "INTEGER"),
+            bigquery.SchemaField("time_since_last_trans_sec", "INTEGER")
         ]
         table = bigquery.Table(table_ref, schema=schema)
         client.create_table(table)

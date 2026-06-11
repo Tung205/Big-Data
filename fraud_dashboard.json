@@ -70,7 +70,7 @@
       "gridPos": { "h": 12, "w": 24, "x": 0, "y": 12 },
       "id": 5,
       "targets": [
-        { "rawSql": "SELECT alert_time, CAST(cc_num AS STRING) as card_number, amt, hour, age, distance_km, velocity_1d_count, velocity_1d_amt_sum, category FROM `project-7942816b-eab8-4949-8b8.fraud_features.realtime_fraud_logs` WHERE is_fraud_predicted = 1 ORDER BY alert_time DESC LIMIT 30" }
+        { "rawSql": "SELECT alert_time, CAST(cc_num AS STRING) as card_number, amt, hour, age, distance_km, velocity_1d_count, velocity_1d_amt_sum, category, time_since_last_trans_sec FROM `project-7942816b-eab8-4949-8b8.fraud_features.realtime_fraud_logs` WHERE is_fraud_predicted = 1 ORDER BY alert_time DESC LIMIT 30" }
       ],
       "options": {
         "overrides": [

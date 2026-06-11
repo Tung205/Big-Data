@@ -162,6 +162,8 @@ class FraudPredictor(MapFunction):
             'distance_km': data['distance_km'], # Thêm cột distance_km để dashboard có thể phân tích theo khoảng cách giao dịch
             'hour': data['hour'], # Thêm cột hour để dashboard có thể phân tích theo giờ giao dịch
             'city_pop': data['city_pop'], # Thêm cột city_pop để dashboard có thể phân tích theo dân số thành phố
+            'time_since_last_trans_sec': data['time_since_last_trans_sec'], # Thêm cột time_since_last_trans_sec để dashboard có thể phân tích theo thời gian kể từ giao dịch trước
+            
             
         }
         return json.dumps(alert_data)

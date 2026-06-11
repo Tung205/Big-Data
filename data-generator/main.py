@@ -43,18 +43,18 @@ def simulate_stream():
         # MÔI TRƯỜNG GCE (CHẠY TRÊN CLOUD)
         # ==========================================
         # Bám sát đúng cam kết NFR trong báo cáo đồ án: 100 TPS
-        TARGET_PER_MINUTE = 1800     # Tương đương 30 TPS (Giao dịch/giây)
+        TARGET_PER_MINUTE = 6000     # Tương đương 100 TPS (Giao dịch/giây)
         DEMO_DURATION_SECONDS = 600  # Chạy demo liên tục trong 10 phút (600s)
-        TOTAL_TARGET = 18000         # 30 TPS * 600s = 18.000 giao dịch
+        TOTAL_TARGET = 60000         # 100 TPS * 600s = 60.000 giao dịch
     else:
         # ==========================================
         # MÔI TRƯỜNG LOCAL (CHẠY TRÊN MÁY TÍNH CÁ NHÂN)
         # ==========================================
         # Máy cá nhân chạy Docker thường bị giới hạn CPU/RAM, 
         # nên để 30 TPS để Flink XGBoost xử lý mượt mà, không bị dồn ứ.
-        TARGET_PER_MINUTE = 600     # Tương đương 10 TPS
-        DEMO_DURATION_SECONDS = 600  # Chạy demo nhanh trong 10 phút (600s)
-        TOTAL_TARGET = 6000          # 10 TPS * 600s = 6.000 giao dịch
+        TARGET_PER_MINUTE = 1800     # Tương đương 30 TPS
+        DEMO_DURATION_SECONDS = 300  # Chạy demo nhanh trong 5 phút (300s)
+        TOTAL_TARGET = 9000          # 30 TPS * 300s = 9.000 giao dịch
     TARGET_TPS = TARGET_PER_MINUTE // 60 
     
     print(f"[*] CHẾ ĐỘ CHẠY: {environment.upper()}")
