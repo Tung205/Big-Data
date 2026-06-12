@@ -1,6 +1,6 @@
-# 🛡️ Real-time Fraud Detection System
+# RIFT: Real-time Identification of Fraud Transactions in Streaming System
 
-> **Hệ thống phát hiện gian lận giao dịch tài chính theo thời gian thực** — Xây dựng trên nền tảng Big Data với Apache Kafka, Apache Flink, Apache Spark và Google BigQuery, tích hợp mô hình ML (XGBoost) và AI phân tích nguyên nhân (LLM + RAG).
+> **Hệ thống luồng dữ liệu nhận biết giao dịch gian lận thời gian thực** — Xây dựng trên nền tảng Big Data với Apache Kafka, Apache Flink, Apache Spark và Google BigQuery, tích hợp mô hình ML (XGBoost) và AI phân tích nguyên nhân (LLM + RAG).
 
 ---
 
